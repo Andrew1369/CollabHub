@@ -67,7 +67,7 @@ namespace CollabHub.Controllers
                 return View(asset);
             }
 
-            var uploadsRoot = Path.Combine(_env.WebRootPath, "uploads");
+            var uploadsRoot = Environment.GetEnvironmentVariable("UPLOADS_PATH") ?? Path.Combine(_env.WebRootPath, "uploads");
             Directory.CreateDirectory(uploadsRoot);
 
             var safeName = Path.GetFileName(file!.FileName);
@@ -135,7 +135,7 @@ namespace CollabHub.Controllers
                         System.IO.File.Delete(oldFull);
                 }
 
-                var uploadsRoot = Path.Combine(_env.WebRootPath, "uploads");
+                var uploadsRoot = Environment.GetEnvironmentVariable("UPLOADS_PATH") ?? Path.Combine(_env.WebRootPath, "uploads");
                 Directory.CreateDirectory(uploadsRoot);
 
                 var safeName = Path.GetFileName(file.FileName);
