@@ -5,16 +5,20 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using CollabHub.Data;
 using CollabHub.Models;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Channel;
 
 namespace CollabHub.Controllers
 {
     public class EventsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly TelemetryClient _telemetry;
 
-        public EventsController(ApplicationDbContext context)
+        public EventsController(ApplicationDbContext context, TelemetryClient telemetry)
         {
             _context = context;
+            _telemetry = telemetry;
         }
 
         // GET: Events
@@ -25,16 +29,24 @@ namespace CollabHub.Controllers
         }
 
         // GET: Events/Details/5
-        public async Task<IActionResult> Details(int? id)
+        public async Task<IActionResult> Details(int id)
         {
-            if (id == null || _context.Events == null) return NotFound();
-
-            var model = await _context.Events
+            var ev = await _context.Events
                 .Include(e => e.Venue)
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (model == null) return NotFound();
+                .Include(e => e.Assets)
+                .FirstOrDefaultAsync(e => e.Id == id);
 
-            return View(model);
+            if (ev == null) return NotFound();
+
+            // кастомний івент
+            _telemetry.TrackEvent("EventDetailsViewed", new Dictionary<string, string>
+            {
+                ["EventId"] = ev.Id.ToString(),
+                ["Title"] = ev.Title ?? "",
+                ["VenueId"] = ev.VenueId.ToString()
+            });
+
+            return View(ev);
         }
 
         // GET: Events/Create

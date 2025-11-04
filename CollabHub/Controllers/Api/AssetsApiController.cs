@@ -4,6 +4,8 @@ using CollabHub.Models;
 using CollabHub.Utils;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.ApplicationInsights;
+using Microsoft.ApplicationInsights.Channel;
 
 namespace CollabHub.Controllers.Api;
 
@@ -13,9 +15,10 @@ public class AssetsApiController : ControllerBase
 {
     private readonly ApplicationDbContext _db;
     private readonly IWebHostEnvironment _env;
-    public AssetsApiController(ApplicationDbContext db, IWebHostEnvironment env)
+    private readonly TelemetryClient _telemetry;
+    public AssetsApiController(ApplicationDbContext db, IWebHostEnvironment env, TelemetryClient telemetry)
     {
-        _db = db; _env = env;
+        _db = db; _env = env; _telemetry = telemetry;
     }
 
     [HttpGet]
@@ -122,6 +125,13 @@ public class AssetsApiController : ControllerBase
         await _db.SaveChangesAsync();
 
         var dto = new AssetDto(a.Id, a.EventId, a.OriginalFileName, a.ContentType, a.FilePath!, a.UploadedAt);
+
+        _telemetry.TrackEvent("AssetUploaded", new Dictionary<string, string>
+        {
+            ["EventId"] = eventId.ToString(),
+            ["FileName"] = safeName,
+            ["ContentType"] = file.ContentType ?? ""
+        });
         return CreatedAtAction(nameof(GetById), new { id = a.Id }, dto);
     }
 

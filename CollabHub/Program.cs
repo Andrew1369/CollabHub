@@ -4,6 +4,9 @@ using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Application Insights
+builder.Services.AddApplicationInsightsTelemetry();
+
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
