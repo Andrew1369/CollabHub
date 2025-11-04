@@ -7,16 +7,18 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
-options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
-
 var dbPathEnv = Environment.GetEnvironmentVariable("DB_PATH");
 var cs = builder.Configuration.GetConnectionString("DefaultConnection");
 if (!string.IsNullOrEmpty(dbPathEnv))
 {
     cs = $"Data Source={dbPathEnv}";
 }
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
+);
+
+
 builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(cs));
 
 var app = builder.Build();
@@ -54,6 +56,12 @@ app.MapControllerRoute(
 if (app.Environment.IsDevelopment())
 {
     Seed.EnsureSeeded(app);
+}
+
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
 }
 
 app.Run();
