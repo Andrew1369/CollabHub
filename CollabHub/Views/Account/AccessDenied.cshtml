@@ -1,0 +1,13 @@
+﻿@{
+    ViewData["Title"] = "Доступ заборонено";
+}
+
+<div class="py-4">
+    <h1 class="mb-3">Доступ заборонено</h1>
+    <p class="text-muted">
+        Ця частина застосунку доступна тільки для користувачів з відповідним планом.
+    </p>
+    <a class="btn btn-primary" asp-controller="Account" asp-action="Plans">
+        Змінити план
+    </a>
+</div>

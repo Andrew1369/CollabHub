@@ -7,7 +7,8 @@
     bool isHome = (ViewContext.RouteData.Values["controller"]?.ToString() == "Home"
                    && ViewContext.RouteData.Values["action"]?.ToString() == "Index");
 }
-
+@using CollabHub.Services
+@inject IFeatureFlagService FeatureFlags
 <!DOCTYPE html>
 <html lang="uk">
 <head>
@@ -99,6 +100,12 @@
                     <li class="nav-item">
                         <a class="nav-link" asp-controller="Todo" asp-action="Index">ToDo</a>
                     </li>
+                    @if (User?.Identity?.IsAuthenticated ?? false && FeatureFlags.IsEnabled("PremiumTodo", User))
+                    {
+                        <li class="nav-item">
+                            <a class="nav-link" asp-controller="Todo" asp-action="Premium">Premium ToDo</a>
+                        </li>
+                    }
 
                     @* ДОДАТКОВО: якірні лінки на секції показуємо лише КОЛИ ми на головній *@
                     @if (isHome)
@@ -123,9 +130,17 @@
 
                     @if (User?.Identity?.IsAuthenticated ?? false)
                     {
+                        var plan = User.FindFirst("plan")?.Value ?? "Free";
+
                         <span class="navbar-text text-white-50 me-2">
-                            @User.Identity!.Name
+                            @User.Identity!.Name (@plan)
                         </span>
+
+                        <a class="btn btn-sm btn-outline-light me-2"
+                           asp-controller="Account"
+                           asp-action="Plans">
+                            Плани
+                        </a>
 
                         <form asp-controller="Account" asp-action="Logout" method="post" class="mb-0">
                             <button type="submit" class="btn btn-sm btn-outline-light">Вийти</button>

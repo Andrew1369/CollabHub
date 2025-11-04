@@ -1,0 +1,61 @@
+﻿@{
+    ViewData["Title"] = "План користування";
+    var currentPlan = (string?)ViewData["CurrentPlan"] ?? "Free";
+}
+
+<div class="py-4">
+    <h1 class="mb-3">План користування</h1>
+    <p class="text-muted">
+        Зараз твій план: <strong>@currentPlan</strong>
+    </p>
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <div class="card @(currentPlan == "Free" ? "border-primary" : "")">
+                <div class="card-body">
+                    <h5 class="card-title">Free</h5>
+                    <p class="card-text small text-muted">
+                        Базовий доступ без особливих фішок.
+                    </p>
+                    @if (currentPlan == "Free")
+                    {
+                        <span class="badge bg-primary">Активний</span>
+                    }
+                    else
+                    {
+                        <form asp-action="SetPlan" method="post">
+                            <input type="hidden" name="plan" value="Free" />
+                            <button class="btn btn-outline-primary btn-sm" type="submit">
+                                Перейти на Free
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-3">
+            <div class="card @(currentPlan == "Premium" ? "border-success" : "")">
+                <div class="card-body">
+                    <h5 class="card-title">Premium</h5>
+                    <p class="card-text small text-muted">
+                        Доступ до особливої сторінки ToDo та інших Premium-фіч.
+                    </p>
+                    @if (currentPlan == "Premium")
+                    {
+                        <span class="badge bg-success">Активний</span>
+                    }
+                    else
+                    {
+                        <form asp-action="SetPlan" method="post">
+                            <input type="hidden" name="plan" value="Premium" />
+                            <button class="btn btn-success btn-sm" type="submit">
+                                Активувати Premium
+                            </button>
+                        </form>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

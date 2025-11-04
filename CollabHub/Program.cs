@@ -5,6 +5,7 @@ using CollabHub.Services;
 using CollabHub.Hubs;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using CollabHub.Services;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,6 +47,7 @@ builder.Services.AddAuthentication(options =>
 {
     options.LoginPath = "/Account/Login";
     options.LogoutPath = "/Account/Logout";
+    options.AccessDeniedPath = "/Account/AccessDenied";
 })
 .AddGoogle(options =>
 {
@@ -56,6 +58,9 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddAuthorization();
 
 builder.Services.AddSignalR();
+
+builder.Services.AddSingleton<IFeatureFlagService, FeatureFlagService>();
+
 
 var app = builder.Build();
 
