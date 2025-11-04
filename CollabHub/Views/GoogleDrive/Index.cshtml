@@ -1,0 +1,66 @@
+﻿@model IReadOnlyList<CollabHub.Dtos.GoogleDriveFileDto>
+
+@{
+    ViewData["Title"] = "Google Drive файли";
+}
+
+<div class="py-4">
+    <h1 class="mb-3">Файли з Google Drive</h1>
+
+    <p class="text-muted">
+        Ці файли завантажуються онлайн з публічної теки Google Drive через Google Drive API.
+    </p>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-warning">
+            Не вдалося завантажити файли або тека порожня.
+        </div>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped align-middle">
+                <thead>
+                    <tr>
+                        <th>Назва</th>
+                        <th>Тип</th>
+                        <th>Розмір</th>
+                        <th>Змінено</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model)
+                    {
+                        <tr>
+                            <td>@f.Name</td>
+                            <td>@f.MimeType</td>
+                            <td>
+                                @if (f.Size.HasValue)
+                                {
+                                    var kb = f.Size.Value / 1024.0;
+                                    @($"{kb:F1} KB")
+                                }
+                            </td>
+                            <td>
+                                @if (f.ModifiedTime.HasValue)
+                                {
+                                    @f.ModifiedTime.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+                                }
+                            </td>
+                            <td>
+                                <a class="btn btn-sm btn-outline-primary"
+                                   href="@f.ViewUrl"
+                                   target="_blank"
+                                   rel="noopener">
+                                    Відкрити
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

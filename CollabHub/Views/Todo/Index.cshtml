@@ -1,0 +1,537 @@
+﻿@{
+    ViewData["Title"] = "ToDo-List";
+}
+
+<style>
+    #todoList .list-group-item {
+        transition: transform 0.15s ease,
+                    box-shadow 0.15s ease,
+                    opacity 0.15s ease,
+                    background-color 0.3s ease;
+        cursor: grab;
+    }
+
+    #todoList .list-group-item.dragging {
+        opacity: 0.7;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        cursor: grabbing;
+    }
+
+    #todoList .list-group-item.drag-over {
+        transform: translateY(2px);
+        box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+    }
+
+    /* --- С14: візуалізація синхронізації між пристроями --- */
+
+    #todoList .list-group-item.todo-remote-added {
+        animation: todo-remote-add 0.6s ease-out;
+    }
+
+    #todoList .list-group-item.todo-remote-updated {
+        animation: todo-remote-update 0.6s ease-out;
+    }
+
+    @@keyframes todo-remote-add {
+        0%   { background-color: #d1e7dd; transform: scale(1.02); }
+        100% { background-color: inherit; transform: scale(1); }
+    }
+
+    @@keyframes todo-remote-update {
+        0%   { background-color: #fff3cd; }
+        100% { background-color: inherit; }
+    }
+</style>
+
+
+
+<div class="py-4">
+    <h1 class="mb-3">ToDo-List організатора</h1>
+    <p class="text-muted">
+        Додавай задачі, відмічай виконані – усе зберігається в цьому браузері (localStorage).
+    </p>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="input-group">
+                <input type="text"
+                       id="todoInput"
+                       class="form-control"
+                       placeholder="Нова задача (наприклад: Замовити каву для учасників)">
+                <button class="btn btn-primary" id="addTodoBtn">
+                    Додати
+                </button>
+            </div>
+            <div class="form-text text-danger d-none" id="todoError">
+                Введи, будь ласка, текст задачі.
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h2 class="h5 mb-0">Мої задачі</h2>
+        <small class="text-muted" id="todoSummary"></small>
+    </div>
+
+    <ul class="list-group" id="todoList">
+        <!-- елементи додає JS -->
+    </ul>
+</div>
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+    <script>
+        (function () {
+            const STORAGE_KEY = 'collabhub_todo_items_v3';
+
+            const input = document.getElementById('todoInput');
+            const addBtn = document.getElementById('addTodoBtn');
+            const listEl = document.getElementById('todoList');
+            const errorEl = document.getElementById('todoError');
+            const summaryEl = document.getElementById('todoSummary');
+
+            let items = [];
+            let isSyncing = false;
+            let initialSyncDone = false;
+
+            // --- localStorage кеш ---
+            function loadLocal() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    if (!raw) return;
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) {
+                        items = parsed;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse ToDo storage', e);
+                }
+            }
+
+            function saveLocal() {
+                try {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+                } catch (e) {
+                    console.error('Failed to save ToDo storage', e);
+                }
+            }
+
+            // --- diff між старим і новим списком (С14) ---
+            function diffItems(oldItems, newItems) {
+                const oldMap = new Map(oldItems.map(i => [i.id, i]));
+                const newMap = new Map(newItems.map(i => [i.id, i]));
+
+                const added = [];
+                const updated = [];
+                const removed = [];
+
+                for (const n of newItems) {
+                    const o = oldMap.get(n.id);
+                    if (!o) {
+                        added.push(n.id);
+                    } else {
+                        if (o.text !== n.text ||
+                            o.done !== n.done ||
+                            o.order !== n.order) {
+                            updated.push(n.id);
+                        }
+                    }
+                }
+
+                for (const o of oldItems) {
+                    if (!newMap.has(o.id)) {
+                        removed.push(o.id);
+                    }
+                }
+
+                return { added, updated, removed };
+            }
+
+            function pulseClass(li, className) {
+                li.classList.remove(className);
+                // форсим reflow, щоб анімація могла повторюватися
+                void li.offsetWidth;
+                li.classList.add(className);
+                setTimeout(() => {
+                    li.classList.remove(className);
+                }, 700);
+            }
+
+            function applyVisualChanges(changes) {
+                // нові задачі
+                changes.added.forEach(id => {
+                    const li = listEl.querySelector(`li[data-id="${id}"]`);
+                    if (li) {
+                        pulseClass(li, 'todo-remote-added');
+                    }
+                });
+
+                // змінені задачі (done/text/order)
+                changes.updated.forEach(id => {
+                    const li = listEl.querySelector(`li[data-id="${id}"]`);
+                    if (li) {
+                        pulseClass(li, 'todo-remote-updated');
+                    }
+                });
+
+                // removed можна не анімувати – вони вже зникли при re-render
+            }
+
+            // --- робота з API ---
+            async function fetchFromServer(silent = false) {
+                const oldItems = items.slice();
+                const shouldHighlight = initialSyncDone; // перший sync без підсвітки
+
+                try {
+                    isSyncing = true;
+                    const resp = await fetch('/api/v1/todos');
+                    if (!resp.ok) throw new Error('Failed to fetch todos');
+                    const data = await resp.json();
+
+                    const newItems = data.map(d => ({
+                        id: d.id,
+                        text: d.text,
+                        done: d.done,
+                        order: d.order,
+                        createdAt: d.createdAt
+                    }));
+
+                    let changes = null;
+                    if (shouldHighlight) {
+                        changes = diffItems(oldItems, newItems);
+                    }
+
+                    items = newItems;
+                    saveLocal();
+                    renderItems();
+
+                    if (shouldHighlight && changes) {
+                        applyVisualChanges(changes);
+                    }
+                } catch (e) {
+                    if (!silent) {
+                        console.error('Failed to sync from server', e);
+                    }
+                } finally {
+                    isSyncing = false;
+                    initialSyncDone = true;
+                }
+            }
+
+            async function createOnServer(text) {
+                const resp = await fetch('/api/v1/todos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text })
+                });
+                if (!resp.ok) throw new Error('Failed to create todo');
+                return await resp.json(); // TodoItemDto
+            }
+
+            async function updateOnServer(id, patch) {
+                const resp = await fetch(`/api/v1/todos/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(patch)
+                });
+                if (!resp.ok) throw new Error('Failed to update todo');
+                return await resp.json(); // TodoItemDto
+            }
+
+            async function deleteOnServer(id) {
+                const resp = await fetch(`/api/v1/todos/${id}`, {
+                    method: 'DELETE'
+                });
+                if (!resp.ok && resp.status !== 404) {
+                    throw new Error('Failed to delete todo');
+                }
+            }
+
+            async function reorderOnServer() {
+                const ids = items.map(i => i.id);
+                const resp = await fetch('/api/v1/todos/reorder', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(ids)
+                });
+                if (!resp.ok) throw new Error('Failed to reorder todos');
+            }
+
+            // --- UI ---
+            function renderSummary() {
+                if (!items.length) {
+                    summaryEl.textContent = 'Поки що задач немає.';
+                    return;
+                }
+                const done = items.filter(i => i.done).length;
+                const total = items.length;
+                summaryEl.textContent = `Виконано ${done} з ${total}`;
+            }
+
+            function renderItems() {
+                listEl.innerHTML = '';
+
+                if (!items.length) {
+                    const emptyLi = document.createElement('li');
+                    emptyLi.className = 'list-group-item text-muted text-center';
+                    emptyLi.textContent = 'Список поки що порожній. Додай першу задачу ↑';
+                    listEl.appendChild(emptyLi);
+                    renderSummary();
+                    return;
+                }
+
+                for (const item of items) {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item d-flex align-items-center justify-content-between';
+                    li.dataset.id = item.id.toString();
+                    li.draggable = true;
+
+                    const left = document.createElement('div');
+                    left.className = 'form-check';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'form-check-input';
+                    checkbox.checked = item.done;
+                    checkbox.dataset.action = 'toggle';
+
+                    const label = document.createElement('label');
+                    label.className = 'form-check-label ms-1';
+
+                    if (item.done) {
+                        const span = document.createElement('span');
+                        span.className = 'text-decoration-line-through text-muted';
+                        span.textContent = item.text;
+                        label.appendChild(span);
+                    } else {
+                        label.textContent = item.text;
+                    }
+
+                    left.appendChild(checkbox);
+                    left.appendChild(label);
+
+                    const right = document.createElement('div');
+
+                    const time = document.createElement('small');
+                    time.className = 'text-muted me-2 d-none d-sm-inline';
+                    try {
+                        const d = new Date(item.createdAt);
+                        time.textContent = d.toLocaleString();
+                    } catch (_) { }
+
+                    const delBtn = document.createElement('button');
+                    delBtn.type = 'button';
+                    delBtn.className = 'btn btn-sm btn-outline-danger';
+                    delBtn.textContent = '×';
+                    delBtn.title = 'Видалити';
+                    delBtn.dataset.action = 'delete';
+
+                    right.appendChild(time);
+                    right.appendChild(delBtn);
+
+                    li.appendChild(left);
+                    li.appendChild(right);
+
+                    listEl.appendChild(li);
+                }
+
+                renderSummary();
+            }
+
+            function clearError() {
+                errorEl.classList.add('d-none');
+            }
+
+            function showError(msg) {
+                errorEl.textContent = msg;
+                errorEl.classList.remove('d-none');
+            }
+
+            // --- дії з сервером ---
+            async function addItem() {
+                const text = input.value.trim();
+                if (!text) {
+                    showError('Введи текст задачі, будь ласка.');
+                    return;
+                }
+                clearError();
+
+                try {
+                    const dto = await createOnServer(text);
+                    items.push({
+                        id: dto.id,
+                        text: dto.text,
+                        done: dto.done,
+                        order: dto.order,
+                        createdAt: dto.createdAt
+                    });
+                    saveLocal();
+                    renderItems();
+                    input.value = '';
+                    input.focus();
+                } catch (e) {
+                    console.error(e);
+                    showError('Не вдалося зберегти задачу на сервері.');
+                }
+            }
+
+            async function toggleItem(id) {
+                const item = items.find(i => i.id === id);
+                if (!item) return;
+
+                const newDone = !item.done;
+                try {
+                    const dto = await updateOnServer(id, { done: newDone });
+                    item.done = dto.done;
+                    saveLocal();
+                    renderItems();
+                } catch (e) {
+                    console.error(e);
+                    showError('Не вдалося оновити задачу на сервері.');
+                }
+            }
+
+            async function deleteItem(id) {
+                try {
+                    await deleteOnServer(id);
+                    items = items.filter(i => i.id !== id);
+                    saveLocal();
+                    renderItems();
+                } catch (e) {
+                    console.error(e);
+                    showError('Не вдалося видалити задачу на сервері.');
+                }
+            }
+
+            async function applyReorder(newOrderIds) {
+                const map = new Map();
+                items.forEach(i => map.set(i.id, i));
+
+                const reordered = [];
+                newOrderIds.forEach(id => {
+                    const item = map.get(id);
+                    if (item) reordered.push(item);
+                });
+
+                items = reordered;
+
+                items.forEach((it, index) => {
+                    it.order = index + 1;
+                });
+
+                saveLocal();
+                renderItems();
+
+                try {
+                    await reorderOnServer();
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            // --- Drag-n-Drop ---
+            let draggingId = null;
+
+            listEl.addEventListener('dragstart', function (e) {
+                const li = e.target.closest('li[data-id]');
+                if (!li) return;
+                draggingId = parseInt(li.dataset.id);
+                li.classList.add('dragging');
+            });
+
+            listEl.addEventListener('dragend', function (e) {
+                const li = e.target.closest('li[data-id]');
+                if (li) {
+                    li.classList.remove('dragging');
+                    li.classList.remove('drag-over');
+                }
+                draggingId = null;
+            });
+
+            listEl.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                const li = e.target.closest('li[data-id]');
+                if (!li || draggingId == null) return;
+                if (parseInt(li.dataset.id) === draggingId) return;
+
+                listEl.querySelectorAll('.drag-over')
+                    .forEach(el => el.classList.remove('drag-over'));
+
+                li.classList.add('drag-over');
+            });
+
+            listEl.addEventListener('drop', function (e) {
+                e.preventDefault();
+                const targetLi = e.target.closest('li[data-id]');
+                if (!targetLi || draggingId == null) return;
+
+                const targetId = parseInt(targetLi.dataset.id);
+                if (targetId === draggingId) return;
+
+                const fromIndex = items.findIndex(i => i.id === draggingId);
+                const toIndex = items.findIndex(i => i.id === targetId);
+                if (fromIndex === -1 || toIndex === -1) return;
+
+                const newItems = items.slice();
+                const [moved] = newItems.splice(fromIndex, 1);
+                newItems.splice(toIndex, 0, moved);
+
+                const newOrderIds = newItems.map(i => i.id);
+                applyReorder(newOrderIds);
+            });
+
+            // --- кліки ---
+            addBtn.addEventListener('click', function () {
+                addItem();
+            });
+
+            input.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addItem();
+                }
+            });
+
+            listEl.addEventListener('click', function (e) {
+                const target = e.target;
+                if (!(target instanceof HTMLElement)) return;
+
+                const li = target.closest('li[data-id]');
+                if (!li) return;
+                const id = parseInt(li.dataset.id);
+
+                if (target.dataset.action === 'toggle') {
+                    toggleItem(id);
+                } else if (target.dataset.action === 'delete') {
+                    deleteItem(id);
+                }
+            });
+
+            // --- init ---
+            loadLocal();      // показуємо кеш
+            renderItems();
+
+            // перший sync із сервера (без підсвітки)
+            fetchFromServer();
+
+            // SignalR: реальний час
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("/hubs/todo")
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on("TodosChanged", () => {
+                // хтось (можливо інший браузер) змінив список задач
+                if (!isSyncing) {
+                    fetchFromServer(true); // без зайвих логів
+                }
+            });
+
+            connection.start().catch(err => {
+                console.error("SignalR connection error:", err);
+            });
+        })();
+    </script>
+}
+
+

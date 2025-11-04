@@ -7,9 +7,14 @@ using CollabHub.Data;
 using CollabHub.Models;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Channel;
+using System.IO;
+using System.Text;
+using CollabHub.Utils;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CollabHub.Controllers
 {
+    [Authorize]
     public class EventsController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -105,6 +110,34 @@ namespace CollabHub.Controllers
             }
             ViewData["VenueId"] = new SelectList(_context.Venues, "Id", "Name", model.VenueId);
             return View(model);
+        }
+
+        // GET: Events/DownloadIcs/5
+        public async Task<IActionResult> DownloadIcs(int id)
+        {
+            var ev = await _context.Events
+                .Include(e => e.Venue)
+                .FirstOrDefaultAsync(e => e.Id == id);
+
+            if (ev == null) return NotFound();
+
+            var ics = CalendarLinkHelpers.BuildIcsContent(ev);
+            var bytes = Encoding.UTF8.GetBytes(ics);
+
+            var safeTitle = SanitizeFileName(ev.Title);
+            var fileName = $"event-{ev.Id}-{safeTitle}.ics";
+
+            return File(bytes, "text/calendar", fileName);
+        }
+
+        private static string SanitizeFileName(string? input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return "event";
+            foreach (var c in Path.GetInvalidFileNameChars())
+            {
+                input = input.Replace(c, '_');
+            }
+            return input;
         }
 
         // GET: Events/Delete/5

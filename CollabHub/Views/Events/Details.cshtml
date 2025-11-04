@@ -27,6 +27,22 @@
                     {
                         <p class="mb-3">@Model.Description</p>
                     }
+
+                    <div class="mb-3">
+                        <a class="btn btn-sm btn-success me-2"
+                           href="@CalendarLinkHelpers.BuildGoogleCalendarLink(Model)"
+                           target="_blank"
+                           rel="noopener">
+                            Додати в Google Calendar
+                        </a>
+
+                        <a class="btn btn-sm btn-outline-secondary"
+                           asp-controller="Events"
+                           asp-action="DownloadIcs"
+                           asp-route-id="@Model.Id">
+                            Завантажити .ics
+                        </a>
+                    </div>
                     <a class="btn btn-primary me-2" asp-controller="Events" asp-action="Edit" asp-route-id="@Model.Id">Редагувати</a>
                     <a class="btn btn-outline-secondary" asp-controller="Events" asp-action="Index">Назад</a>
                 </div>

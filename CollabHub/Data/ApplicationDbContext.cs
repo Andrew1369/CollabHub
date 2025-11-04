@@ -13,6 +13,7 @@ namespace CollabHub.Data
         public DbSet<Venue> Venues => Set<Venue>();
         public DbSet<Event> Events => Set<Event>();
         public DbSet<Asset> Assets => Set<Asset>();
+        public DbSet<TodoItem> TodoItems => Set<TodoItem>();
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

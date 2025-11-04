@@ -7,9 +7,11 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using CollabHub.Data;
 using CollabHub.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CollabHub.Controllers
 {
+    [Authorize]
     public class VenuesController : Controller
     {
         private readonly ApplicationDbContext _context;

@@ -1,6 +1,11 @@
 using CollabHub.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using CollabHub.Services;
+using CollabHub.Hubs;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Google;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,6 +35,27 @@ options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")
 
 
 builder.Services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(cs));
+builder.Services.AddHttpClient<IGoogleDriveService, GoogleDriveService>();
+
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
+})
+.AddCookie(options =>
+{
+    options.LoginPath = "/Account/Login";
+    options.LogoutPath = "/Account/Logout";
+})
+.AddGoogle(options =>
+{
+    options.ClientId = builder.Configuration["Authentication:Google:ClientId"]!;
+    options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"]!;
+});
+
+builder.Services.AddAuthorization();
+
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
@@ -56,7 +82,7 @@ if (!string.IsNullOrEmpty(uploadsPhysical))
 }
 
 app.UseRouting();
-
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
@@ -73,5 +99,5 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
 }
-
+app.MapHub<TodoHub>("/hubs/todo");
 app.Run();
