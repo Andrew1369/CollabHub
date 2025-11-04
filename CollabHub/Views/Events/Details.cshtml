@@ -1,60 +1,96 @@
 @model CollabHub.Models.Event
-
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = Model.Title;
+    ViewData["MetaDescription"] = $"Подія: {Model.Title}. Початок {Model.StartsAt:dd.MM.yyyy HH:mm} у {Model?.Venue?.Name ?? ("Venue #" + Model.VenueId)}.";
+    ViewBag.Canonical = $"{Context.Request.Scheme}://{Context.Request.Host}{Context.Request.Path}";
 }
 
-<h1>Details</h1>
+<section class="section pt-4">
+    <div class="row g-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm">
+                @if (!string.IsNullOrEmpty(Model.ImageUrl))
+                {
+                    <img class="card-img-top object-cover" style="height:300px" src="@Model.ImageUrl" alt="@Model.Title" />
+                }
+                <div class="card-body">
+                    <h1 class="h3 mb-2">@Model.Title</h1>
+                    <div class="text-muted small mb-3">
+                        <span class="me-2">Початок: @Model.StartsAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")</span>
+                        <span class="me-2">Кінець: @Model.EndsAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm")</span>
+                        @if (Model.Capacity.HasValue)
+                        {
+                            <span>· Місць: @Model.Capacity</span>
+                        }
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(Model.Description))
+                    {
+                        <p class="mb-3">@Model.Description</p>
+                    }
+                    <a class="btn btn-primary me-2" asp-controller="Events" asp-action="Edit" asp-route-id="@Model.Id">Редагувати</a>
+                    <a class="btn btn-outline-secondary" asp-controller="Events" asp-action="Index">Назад</a>
+                </div>
+            </div>
 
-<div>
-    <h4>Event</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Venue)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Venue.Name)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Title)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Title)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Description)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Description)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.StartsAt)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.StartsAt)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.EndsAt)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.EndsAt)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Capacity)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Capacity)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.ImageUrl)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.ImageUrl)
-        </dd>
-    </dl>
-</div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
-    <a asp-action="Index">Back to List</a>
-</div>
+            <div class="card shadow-sm mt-3">
+                <div class="card-body">
+                    <h2 class="h5 mb-3">Файли події</h2>
+                    @if (Model.Assets == null || !Model.Assets.Any())
+                    {
+                        <div class="alert alert-info">Ще немає файлів.</div>
+                    }
+                    else
+                    {
+                        <div class="row g-2">
+                            @foreach (var a in Model.Assets.OrderByDescending(x => x.UploadedAt))
+                            {
+                                <div class="col-12 col-md-6">
+                                    <div class="border rounded p-2 d-flex justify-content-between align-items-center">
+                                        <div class="small text-truncate" title="@a.OriginalFileName">@a.OriginalFileName</div>
+                                        @if (!string.IsNullOrEmpty(a.FilePath))
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary" href="@a.FilePath" target="_blank" rel="noopener">Відкрити</a>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h2 class="h6 mb-2">Локація</h2>
+                    <div class="mb-1"><strong>@(Model?.Venue?.Name ?? ("Venue #" + Model.VenueId))</strong></div>
+                    <div class="text-muted small">@Model?.Venue?.Address</div>
+                    <a class="btn btn-sm btn-outline-secondary mt-2" asp-controller="Venues" asp-action="Details" asp-route-id="@Model.VenueId">Деталі локації</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@section Scripts {
+    <!-- JSON-LD для SEO (Event) -->
+    <script type="application/ld+json">
+        {
+          "@@context": "https://schema.org",
+          "@@type": "Event",
+          "name": "@Model.Title",
+          "startDate": "@Model.StartsAt.ToString("o")",
+          "endDate": "@Model.EndsAt.ToString("o")",
+          "eventStatus": "https://schema.org/EventScheduled",
+          "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+          "location": {
+            "@@type": "Place",
+            "name": "@(Model?.Venue?.Name ?? ("Venue #" + Model.VenueId))",
+            "address": "@Model?.Venue?.Address"
+          },
+          "image": "@Model.ImageUrl",
+          "description": "@(Model.Description ?? "")"
+        }
+    </script>
+}

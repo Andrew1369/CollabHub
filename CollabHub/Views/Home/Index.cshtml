@@ -1,8 +1,216 @@
-﻿@{
-    ViewData["Title"] = "Home Page";
+﻿@model CollabHub.Models.ViewModels.LandingVm
+@{
+    ViewData["Title"] = "Лендінг";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<!-- HERO -->
+<section id="hero" class="section pt-4">
+    <div class="hero p-5">
+        <div class="row align-items-center g-4">
+            <div class="col-lg-7">
+                <h1 class="display-5 fw-bold mb-3">Організуй і надихай</h1>
+                <p class="lead mb-4 text-light opacity-75">
+                    CollabHub — платформа для керування подіями, локаціями та файлами. Все, що потрібно — на одній сторінці.
+                </p>
+                <div class="d-flex gap-2">
+                    <a class="btn btn-primary btn-lg" asp-controller="Events" asp-action="Create">Створити подію</a>
+                    <a class="btn btn-outline-light btn-lg" href="#events">Переглянути події</a>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <div class="row g-3">
+                    <div class="col-6">
+                        <div class="card bg-light text-dark">
+                            <div class="card-body text-center">
+                                <div class="small text-muted">Організації</div>
+                                <div class="fs-3 fw-semibold">@Model.Organizations</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card bg-light text-dark">
+                            <div class="card-body text-center">
+                                <div class="small text-muted">Локації</div>
+                                <div class="fs-3 fw-semibold">@Model.Venues</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card bg-light text-dark">
+                            <div class="card-body text-center">
+                                <div class="small text-muted">Події</div>
+                                <div class="fs-3 fw-semibold">@Model.Events</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card bg-light text-dark">
+                            <div class="card-body text-center">
+                                <div class="small text-muted">Файли</div>
+                                <div class="fs-3 fw-semibold">@Model.Assets</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ORGANIZATIONS -->
+<section id="organizations" class="section">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h4 m-0">Організації</h2>
+        <a asp-controller="Organizations" asp-action="Index" class="btn btn-sm btn-outline-secondary">Усі</a>
+    </div>
+    <div class="row g-3">
+        @foreach (var o in Model.Orgs)
+        {
+            <div class="col-12 col-sm-6 col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h3 class="h6 m-0">@o.Name</h3>
+                            <span class="badge badge-soft">Org</span>
+                        </div>
+                        <p class="text-muted small">@o.Description</p>
+                        <div class="mt-auto">
+                            <a asp-controller="Organizations" asp-action="Details" asp-route-id="@o.Id" class="btn btn-sm btn-primary">Деталі</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+<!-- VENUES -->
+<section id="venues" class="section bg-light rounded-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h4 m-0">Локації</h2>
+        <a asp-controller="Venues" asp-action="Index" class="btn btn-sm btn-outline-secondary">Усі</a>
+    </div>
+    <div class="row g-3">
+        @foreach (var v in Model.VenuesList)
+        {
+            <div class="col-12 col-sm-6 col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <h3 class="h6">@v.Name</h3>
+                        <div class="text-muted small mb-2">@v.Address</div>
+                        <div class="text-muted small">Орг: @v.OrgName</div>
+                        <div class="mt-auto">
+                            <a asp-controller="Venues" asp-action="Details" asp-route-id="@v.Id" class="btn btn-sm btn-outline-primary">Деталі</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+<!-- EVENTS -->
+<section id="events" class="section">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h4 m-0">Майбутні події</h2>
+        <a asp-controller="Events" asp-action="Index" class="btn btn-sm btn-outline-secondary">Усі події</a>
+    </div>
+    @if (Model.Upcoming.Count == 0)
+    {
+        <div class="alert alert-info">Немає запланованих подій. Створіть першу!</div>
+    }
+    else
+    {
+        <div class="row g-3">
+            @foreach (var e in Model.Upcoming)
+            {
+                <div class="col-12 col-sm-6 col-lg-4">
+                    <div class="card h-100 shadow-sm">
+                        @if (!string.IsNullOrEmpty(e.ImageUrl))
+                        {
+                            <img class="card-img-top object-cover" src="@e.ImageUrl" alt="@e.Title" />
+                        }
+                        <div class="card-body d-flex flex-column">
+                            <h3 class="h6 card-title mb-1">@e.Title</h3>
+                            <div class="text-muted small mb-2">
+                                @e.StartsAt.ToLocalTime().ToString("dd MMM yyyy, HH:mm") · @e.VenueName
+                            </div>
+                            <div class="mt-auto d-flex gap-2">
+                                <a class="btn btn-sm btn-primary" asp-controller="Events" asp-action="Details" asp-route-id="@e.Id">Деталі</a>
+                                <a class="btn btn-sm btn-outline-secondary" asp-controller="Assets" asp-action="Index">Файли</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</section>
+
+<!-- ASSETS -->
+<section id="assets" class="section bg-light rounded-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h4 m-0">Останні файли</h2>
+        <a asp-controller="Assets" asp-action="Index" class="btn btn-sm btn-outline-secondary">Усі файли</a>
+    </div>
+    <div class="row g-3">
+        @foreach (var a in Model.LatestAssets)
+        {
+            <div class="col-12 col-sm-6 col-lg-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body d-flex flex-column">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <h3 class="h6 m-0 text-truncate" title="@a.OriginalFileName">@a.OriginalFileName</h3>
+                            <span class="badge text-bg-light">@a.UploadedAt.ToLocalTime().ToString("dd.MM")</span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(a.FilePath))
+                        {
+                            <a class="small text-decoration-none text-primary" href="@a.FilePath" target="_blank" rel="noopener">Відкрити</a>
+                        }
+                        <div class="mt-auto">
+                            <a class="btn btn-sm btn-outline-primary" asp-controller="Events" asp-action="Details" asp-route-id="@a.EventId">До події</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</section>
+
+<!-- CONTACTS (завжди є в меню + дублікат у sticky) -->
+<section id="contacts" class="section">
+    <h2 class="h4 mb-3">Контакти</h2>
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form>
+                        <div class="mb-3">
+                            <label class="form-label">Ім'я</label>
+                            <input class="form-control" placeholder="Ваше ім'я" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" placeholder="you@example.com" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Повідомлення</label>
+                            <textarea class="form-control" rows="4" placeholder="Ваше повідомлення"></textarea>
+                        </div>
+                        <button class="btn btn-primary" type="button" disabled>Надіслати (демо)</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="mb-2"><strong>Email:</strong> hello@collabhub.local</div>
+                    <div class="mb-2"><strong>Телефон:</strong> +38 000 000 00 00</div>
+                    <div class="mb-2"><strong>Адреса:</strong> Київ (демо)</div>
+                    <div class="text-muted small">Контактна форма не відправляє листи в демо-режимі.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
