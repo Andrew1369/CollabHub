@@ -2,21 +2,25 @@ name: Build & Deploy to Azure App Service
 
 on:
   push:
-    branches: [ "master" ]   # або "main"
+    branches: [ "master" ]      # <— якщо твоя гілка називається main, напиши "main"
   workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
 
-      # якщо .csproj у підпапці CollabHub/
+      # !!! УВАГА до шляхів:
+      # Якщо CollabHub.csproj лежить у підпапці CollabHub/, лишаємо як нижче.
+      # Якщо .csproj у корені репо — заміни на ./CollabHub.csproj у трьох кроках.
+
       - name: Restore
         run: dotnet restore ./CollabHub/CollabHub.csproj
 
@@ -26,10 +30,17 @@ jobs:
       - name: Publish
         run: dotnet publish ./CollabHub/CollabHub.csproj -c Release -o ./publish --no-build
 
+      # Перевірка наявності секрету (щоб одразу ловити проблему)
+      - name: Check publish profile secret
+        run: |
+          if [ -z "${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}" ]; then
+            echo "❌ Missing secret AZUREAPPSERVICE_PUBLISHPROFILE"; exit 1;
+          fi
+
       - name: Deploy to Azure Web App
         uses: azure/webapps-deploy@v3
         with:
-          app-name: CollabHub20251104183826   # ТВОЄ точне ім’я Web App
+          app-name: CollabHub20251104183826   # <— ТОЧНА назва твого Web App з Azure (Overview → Name)
           slot-name: Production
           publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE }}
           package: ./publish
