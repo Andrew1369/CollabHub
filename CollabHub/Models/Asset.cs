@@ -13,7 +13,6 @@ namespace CollabHub.Models
         public Event? Event { get; set; }
 
 
-        [Required]
         public string FilePath { get; set; } = string.Empty; // відносний шлях типу "/uploads/abc.png"
 
 

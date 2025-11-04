@@ -1,0 +1,125 @@
+﻿@{
+    ViewData["Title"] = "Мапа";
+    ViewData["MetaDescription"] = "Мапа локацій і подій CollabHub.";
+}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
+<style>
+    #map {
+        height: 70vh;
+        border-radius: 12px;
+    }
+
+    .leaflet-popup-content {
+        min-width: 220px;
+    }
+</style>
+
+<div class="row g-3">
+    <div class="col-lg-3">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Фільтри</h5>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="chkVenues" checked>
+                    <label class="form-check-label" for="chkVenues">Показувати локації</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="chkEvents" checked>
+                    <label class="form-check-label" for="chkEvents">Показувати події</label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="chkUpcoming" checked>
+                    <label class="form-check-label" for="chkUpcoming">Лише майбутні події</label>
+                </div>
+                <button id="btnReload" class="btn btn-primary w-100">Оновити</button>
+                <hr />
+                <button id="btnLocate" class="btn btn-outline-secondary w-100">Моє розташування</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-9">
+        <div id="map"></div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+@section Scripts {
+    <script>
+        (async function(){
+          const map = L.map('map').setView([50.4501, 30.5234], 6); // Центр: Київ
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19, attribution: '&copy; OpenStreetMap'
+          }).addTo(map);
+
+          const clustersVenues = L.markerClusterGroup();
+          const clustersEvents = L.markerClusterGroup();
+          map.addLayer(clustersVenues); map.addLayer(clustersEvents);
+
+          async function loadVenues(){
+            const res = await fetch('/api/v1/venues/geo');
+            const geo = await res.json();
+            clustersVenues.clearLayers();
+            const gj = L.geoJSON(geo, {
+              pointToLayer: (f, latlng) => L.marker(latlng, { title: f.properties.name }),
+              onEachFeature: (f, layer) => {
+                layer.bindPopup(`
+                  <div><strong>${f.properties.name}</strong></div>
+                  <div class="text-muted small">${f.properties.address ?? ""}</div>
+                  <div class="mt-2"><a class="btn btn-sm btn-primary" href="${f.properties.detailsUrl}">Деталі локації</a></div>
+                `);
+              }
+            });
+            clustersVenues.addLayer(gj);
+          }
+
+          async function loadEvents(){
+            const onlyUpcoming = document.getElementById('chkUpcoming').checked;
+            const res = await fetch('/api/v1/events/geo?upcoming=' + (onlyUpcoming ? 'true' : 'false'));
+            const geo = await res.json();
+            clustersEvents.clearLayers();
+            const gj = L.geoJSON(geo, {
+              pointToLayer: (f, latlng) => L.circleMarker(latlng, { radius: 8 }),
+              onEachFeature: (f, layer) => {
+                const d = new Date(f.properties.startsAt);
+                layer.bindPopup(`
+                  <div><strong>${f.properties.title}</strong></div>
+                  <div class="text-muted small">${d.toLocaleString()} · ${f.properties.venueName}</div>
+                  <div class="mt-2 d-flex gap-2">
+                    <a class="btn btn-sm btn-primary" href="${f.properties.detailsUrl}">Деталі події</a>
+                  </div>
+                `);
+              }
+            });
+            clustersEvents.addLayer(gj);
+          }
+
+          async function reload(){
+            const showVenues = document.getElementById('chkVenues').checked;
+            const showEvents = document.getElementById('chkEvents').checked;
+
+            if (showVenues) await loadVenues(); else clustersVenues.clearLayers();
+            if (showEvents) await loadEvents(); else clustersEvents.clearLayers();
+          }
+
+          document.getElementById('btnReload').addEventListener('click', reload);
+
+          document.getElementById('btnLocate').addEventListener('click', () => {
+            if (!navigator.geolocation) return alert('Geolocation не підтримується');
+            navigator.geolocation.getCurrentPosition(pos => {
+              const { latitude, longitude } = pos.coords;
+              map.setView([latitude, longitude], 12);
+              L.circle([latitude, longitude], { radius: 300 }).addTo(map);
+            }, err => alert('Не вдалось отримати геопозицію'));
+          });
+
+          await reload();
+        })();
+    </script>
+}

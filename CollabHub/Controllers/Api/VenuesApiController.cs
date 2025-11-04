@@ -52,7 +52,7 @@ public class VenuesApiController : ControllerBase
         var items = await queryable
             .Skip(effectiveSkip)
             .Take(pageSize)
-            .Select(v => new VenueDto(v.Id, v.Name, v.Address, v.OrganizationId))
+            .Select(v => new VenueDto(v.Id, v.Name, v.Address, v.OrganizationId, v.Latitude, v.Longitude))
             .ToListAsync();
 
         var hasNext = effectiveSkip + items.Count < total;
@@ -83,34 +83,44 @@ public class VenuesApiController : ControllerBase
     public async Task<ActionResult<VenueDto>> GetById(int id)
     {
         var v = await _db.Venues.FindAsync(id);
-        return v is null ? NotFound() : new VenueDto(v.Id, v.Name, v.Address, v.OrganizationId);
+        return v is null ? NotFound() : new VenueDto(v.Id, v.Name, v.Address, v.OrganizationId, v.Latitude, v.Longitude);
     }
 
     [HttpPost]
-    public async Task<ActionResult<VenueDto>> Create(CreateVenueDto dto)
+    public async Task<ActionResult<VenueDto>> Create([FromBody] CreateVenueDto dto)
     {
-        if (!await _db.Organizations.AnyAsync(o => o.Id == dto.OrganizationId))
-            return BadRequest($"Organization {dto.OrganizationId} not found");
+        var venue = new Venue
+        {
+            Name = dto.Name,
+            Address = dto.Address,
+            OrganizationId = dto.OrganizationId,
+            Latitude = dto.Latitude,      // <—
+            Longitude = dto.Longitude     // <—
+        };
 
-        var v = new Venue { Name = dto.Name, Address = dto.Address, OrganizationId = dto.OrganizationId };
-        _db.Venues.Add(v);
+        _db.Venues.Add(venue);
         await _db.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetById), new { id = v.Id },
-            new VenueDto(v.Id, v.Name, v.Address, v.OrganizationId));
+
+        var result = new VenueDto(venue.Id, venue.Name, venue.Address, venue.OrganizationId, venue.Latitude, venue.Longitude);
+        return CreatedAtAction(nameof(GetById), new { id = venue.Id }, result);
     }
 
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, UpdateVenueDto dto)
+    public async Task<ActionResult<VenueDto>> Update(int id, [FromBody] UpdateVenueDto dto)
     {
-        var v = await _db.Venues.FindAsync(id);
-        if (v is null) return NotFound();
+        var venue = await _db.Venues.FindAsync(id);
+        if (venue == null) return NotFound();
 
-        if (!await _db.Organizations.AnyAsync(o => o.Id == dto.OrganizationId))
-            return BadRequest($"Organization {dto.OrganizationId} not found");
+        venue.Name = dto.Name;
+        venue.Address = dto.Address;
+        venue.OrganizationId = dto.OrganizationId;
+        venue.Latitude = dto.Latitude;   // <—
+        venue.Longitude = dto.Longitude; // <—
 
-        v.Name = dto.Name; v.Address = dto.Address; v.OrganizationId = dto.OrganizationId;
         await _db.SaveChangesAsync();
-        return NoContent();
+
+        var result = new VenueDto(venue.Id, venue.Name, venue.Address, venue.OrganizationId, venue.Latitude, venue.Longitude);
+        return Ok(result);
     }
 
     [HttpDelete("{id:int}")]
