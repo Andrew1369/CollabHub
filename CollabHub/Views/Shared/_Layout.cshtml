@@ -100,6 +100,9 @@
                     <li class="nav-item">
                         <a class="nav-link" asp-controller="Todo" asp-action="Index">ToDo</a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" asp-controller="Stats" asp-action="Index">Statistics</a>
+                    </li>
                     @if (User?.Identity?.IsAuthenticated ?? false && FeatureFlags.IsEnabled("PremiumTodo", User))
                     {
                         <li class="nav-item">
@@ -107,20 +110,6 @@
                         </li>
                     }
 
-                    @* ДОДАТКОВО: якірні лінки на секції показуємо лише КОЛИ ми на головній *@
-                    @if (isHome)
-                    {
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">На цій сторінці</a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="#organizations">Секція: Організації</a></li>
-                                <li><a class="dropdown-item" href="#venues">Секція: Локації</a></li>
-                                <li><a class="dropdown-item" href="#events">Секція: Події</a></li>
-                                <li><a class="dropdown-item" href="#assets">Секція: Файли</a></li>
-                                <li><a class="dropdown-item" href="#contacts">Секція: Контакти</a></li>
-                            </ul>
-                        </li>
-                    }
                 </ul>
                 <div class="d-flex align-items-center gap-2">
                     <form class="d-flex me-2" method="get" asp-controller="Events" asp-action="Index">

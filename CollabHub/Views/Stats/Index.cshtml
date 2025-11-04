@@ -1,0 +1,103 @@
+﻿@{
+    ViewData["Title"] = "Statistics";
+}
+
+<div class="py-4">
+    <h1 class="mb-3">Statistics</h1>
+    <p class="text-muted">
+        Кількість подій по локаціях (venues). Дані тягнуться з backend-API і візуалізуються через Chart.js.
+    </p>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h2 class="h5 mb-3">Events by venue</h2>
+
+            <div style="position: relative; height: 320px;">
+                <canvas id="eventsByVenueChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div id="statsError" class="alert alert-danger d-none">
+        Не вдалося завантажити статистику.
+    </div>
+</div>
+
+@section Scripts {
+    <!-- Chart.js з CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        (function () {
+            const ctx = document.getElementById('eventsByVenueChart').getContext('2d');
+            const errorEl = document.getElementById('statsError');
+
+            let chart = null;
+
+            async function loadStats() {
+                try {
+                    const resp = await fetch('/api/v1/stats/events-by-venue');
+                    if (!resp.ok) throw new Error('Failed to load stats');
+
+                    const data = await resp.json(); // [{ label, value }, ...]
+
+                    if (!Array.isArray(data) || data.length === 0) {
+                        errorEl.classList.remove('d-none');
+                        errorEl.textContent = 'Поки що немає подій для побудови статистики.';
+                        return;
+                    }
+
+                    const labels = data.map(x => x.label);
+                    const values = data.map(x => x.value);
+
+                    if (chart) {
+                        chart.destroy();
+                    }
+
+                    chart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Events count',
+                                data: values,
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        precision: 0
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (context) {
+                                            const value = context.parsed.y;
+                                            return `Events: ${value}`;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } catch (e) {
+                    console.error(e);
+                    errorEl.classList.remove('d-none');
+                    errorEl.textContent = 'Не вдалося завантажити статистику.';
+                }
+            }
+
+            loadStats();
+        })();
+    </script>
+}
