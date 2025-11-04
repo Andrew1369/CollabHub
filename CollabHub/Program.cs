@@ -7,6 +7,13 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllersWithViews();
 
+builder.Services.AddControllers()
+    .AddJsonOptions(o =>
+    {
+        o.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        o.JsonSerializerOptions.WriteIndented = true;
+    });
+
 var dbPathEnv = Environment.GetEnvironmentVariable("DB_PATH");
 var cs = builder.Configuration.GetConnectionString("DefaultConnection");
 if (!string.IsNullOrEmpty(dbPathEnv))
