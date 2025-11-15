@@ -24,7 +24,7 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_CORE_VERSION }}
 
-      # Можеш вказати .sln або конкретний .csproj
+      
       - name: Restore
         run: dotnet restore "${{ env.WORKING_DIRECTORY }}"
 
