@@ -17,8 +17,29 @@
 
             <div class="form-group mt-3">
                 <label class="control-label">File</label>
-                <input type="file" name="file" class="form-control" />
+                <input type="file" name="file" class="form-control" id="AssetFile" />
                 <span asp-validation-for="FilePath" class="text-danger"></span>
+            </div>
+
+            <div class="mt-3" id="assetFilePreviewContainer" style="display:none;">
+                <h5>Попередній перегляд файлу</h5>
+
+                <div class="small text-muted mb-2" id="assetFileInfo"></div>
+
+                <!-- Прев'ю для зображень -->
+                <img id="assetImagePreview"
+                     src=""
+                     alt="Попередній перегляд зображення"
+                     style="max-width: 100%; max-height: 250px; display:none; border-radius: 0.5rem; border: 1px solid #ddd;" />
+
+                <!-- Прев'ю для відео -->
+                <video id="assetVideoPreview"
+                       controls
+                       style="max-width: 100%; max-height: 250px; display:none; border-radius: 0.5rem; border: 1px solid #ddd;">
+                </video>
+
+                <!-- Повідомлення про помилки -->
+                <div id="assetFileError" class="alert alert-warning mt-2" style="display:none;"></div>
             </div>
 
             <div class="form-group mt-3">
@@ -32,4 +53,104 @@
     @{
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
+
+    <script>
+        (function () {
+            // Налаштування
+            const MAX_SIZE_MB = 10; // максимальний розмір файлу
+            const fileInput = document.getElementById('AssetFile');      // наш <input type="file">
+            if (!fileInput) return; // якщо з якоїсь причини інпута нема
+
+            const container = document.getElementById('assetFilePreviewContainer');
+            const infoEl = document.getElementById('assetFileInfo');
+            const imgEl = document.getElementById('assetImagePreview');
+            const videoEl = document.getElementById('assetVideoPreview');
+            const errorEl = document.getElementById('assetFileError');
+
+            // кнопка "Save" (submit) форми — щоб блокувати при помилках
+            const form = fileInput.closest('form');
+            const submitButton = form ? form.querySelector('button[type="submit"], input[type="submit"]') : null;
+
+            function formatBytes(bytes) {
+                if (bytes === 0) return '0 B';
+                const k = 1024;
+                const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                const value = bytes / Math.pow(k, i);
+                return value.toFixed(1) + ' ' + sizes[i];
+            }
+
+            function resetPreview() {
+                container.style.display = 'none';
+                infoEl.textContent = '';
+                imgEl.style.display = 'none';
+                imgEl.src = '';
+                videoEl.style.display = 'none';
+                videoEl.src = '';
+                errorEl.style.display = 'none';
+                errorEl.textContent = '';
+                if (submitButton) {
+                    submitButton.disabled = false;
+                }
+            }
+
+            fileInput.addEventListener('change', function () {
+                resetPreview();
+
+                const file = fileInput.files && fileInput.files[0];
+                if (!file) {
+                    return;
+                }
+
+                container.style.display = 'block';
+
+                const name = file.name;
+                const size = file.size;
+                const type = file.type || 'unknown';
+
+                infoEl.textContent = `Назва: ${name} | Розмір: ${formatBytes(size)} | Тип: ${type}`;
+
+                // Перевірка розміру
+                const maxBytes = MAX_SIZE_MB * 1024 * 1024;
+                if (size > maxBytes) {
+                    errorEl.style.display = 'block';
+                    errorEl.textContent = `Файл завеликий. Максимальний розмір: ${MAX_SIZE_MB} MB.`;
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                    }
+                    return;
+                }
+
+                // Вмикаємо кнопку, якщо вона була заблокована раніше
+                if (submitButton) {
+                    submitButton.disabled = false;
+                }
+
+                // Якщо це зображення -> показуємо прев'ю
+                if (type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        imgEl.src = e.target.result;
+                        imgEl.style.display = 'block';
+                    };
+                    reader.readAsDataURL(file);
+                }
+                // Якщо це відео -> показуємо прев'ю через object URL
+                else if (type.startsWith('video/')) {
+                    const url = URL.createObjectURL(file);
+                    videoEl.src = url;
+                    videoEl.style.display = 'block';
+
+                    // Коли відео більше не потрібно, можна відкликати URL
+                    videoEl.onloadeddata = function () {
+                        URL.revokeObjectURL(url);
+                    };
+                }
+                else {
+                    // для інших типів просто залишаємо інфу в тексті
+                    // можна показати іконку, якщо захочеш
+                }
+            });
+        })();
+    </script>
 }
