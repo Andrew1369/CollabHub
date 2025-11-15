@@ -132,4 +132,31 @@ public class VenuesApiController : ControllerBase
         await _db.SaveChangesAsync();
         return NoContent();
     }
+
+    [HttpGet("autocomplete")]
+    public async Task<ActionResult<IEnumerable<AutocompleteItemDto>>> Autocomplete([FromQuery] string term)
+    {
+        if (string.IsNullOrWhiteSpace(term) || term.Length < 3)
+        {
+            
+            return Ok(Array.Empty<AutocompleteItemDto>());
+        }
+
+        term = term.Trim();
+
+        var query = _db.Venues
+            .AsNoTracking()
+            .Where(v => v.Name.Contains(term))          
+            .OrderBy(v => v.Name)
+            .Take(20);                                  
+
+        var items = await query
+            .Select(v => new AutocompleteItemDto(
+                v.Id,
+                v.Name
+            ))
+            .ToListAsync();
+
+        return Ok(items);
+    }
 }

@@ -13,8 +13,19 @@
         <form asp-action="Create">
             <div asp-validation-summary="ModelOnly" class="text-danger"></div>
             <div class="form-group">
-                <label asp-for="VenueId" class="control-label"></label>
-                <select asp-for="VenueId" class ="form-control" asp-items="ViewBag.VenueId"></select>
+                <label asp-for="VenueId" class="control-label">Локація</label>
+
+                <!-- Справжнє значення для моделі -->
+                <input type="hidden" asp-for="VenueId" id="VenueId" />
+
+                <!-- Поле для пошуку/вибору локації -->
+                <input type="text"
+                       id="VenueName"
+                       class="form-control"
+                       autocomplete="off"
+                       placeholder="Почни вводити назву локації (мінімум 3 символи)" />
+
+                <span asp-validation-for="VenueId" class="text-danger"></span>
             </div>
             <div class="form-group">
                 <label asp-for="Title" class="control-label"></label>
@@ -58,5 +69,60 @@
 </div>
 
 @section Scripts {
-    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <!-- jQuery (якщо у _Layout вже підключений, цей рядок можна не додавати) -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+            integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+            crossorigin="anonymous"></script>
+
+    <!-- jQuery UI CSS + JS для autocomplete -->
+    <link rel="stylesheet"
+          href="https://code.jquery.com/ui/1.13.3/themes/base/jquery-ui.css" />
+    <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js"
+            crossorigin="anonymous"></script>
+
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+    <script>
+        $(function () {
+            var $venueName = $("#VenueName");
+            var $venueId = $("#VenueId");
+
+            $venueName.autocomplete({
+                minLength: 3,        // F2: від 3 символів
+                delay: 300,          // невелика затримка
+                source: function (request, response) {
+                    $.ajax({
+                        url: "/api/v1/venues/autocomplete",
+                        data: { term: request.term },
+                        success: function (data) {
+                            // data: [{ id, label }]
+                            response($.map(data, function (item) {
+                                return {
+                                    label: item.label,
+                                    value: item.label,   // що покажемо в input
+                                    id: item.id
+                                };
+                            }));
+                        },
+                        error: function () {
+                            response([]);
+                        }
+                    });
+                },
+                select: function (event, ui) {
+                    // при виборі варіанта з списку
+                    $venueId.val(ui.item.id);
+                },
+                change: function (event, ui) {
+                    // якщо користувач ввів щось, але нічого не вибрав зі списку
+                    if (!ui.item) {
+                        $venueId.val("");
+                        $venueName.val("");
+                    }
+                }
+            });
+        });
+    </script>
 }

@@ -83,7 +83,11 @@ namespace CollabHub.Controllers
 
             var model = await _context.Events.FindAsync(id);
             if (model == null) return NotFound();
-            ViewData["VenueId"] = new SelectList(_context.Venues, "Id", "Name", model.VenueId);
+
+            // Дістаємо назву Venue для заповнення autocomplete
+            var venue = await _context.Venues.FindAsync(model.VenueId);
+            ViewBag.VenueName = venue?.Name ?? string.Empty;
+
             return View(model);
         }
 
