@@ -43,7 +43,7 @@ namespace CollabHub.Controllers
 
             if (ev == null) return NotFound();
 
-            // кастомний івент
+            
             _telemetry.TrackEvent("EventDetailsViewed", new Dictionary<string, string>
             {
                 ["EventId"] = ev.Id.ToString(),
@@ -84,7 +84,7 @@ namespace CollabHub.Controllers
             var model = await _context.Events.FindAsync(id);
             if (model == null) return NotFound();
 
-            // Дістаємо назву Venue для заповнення autocomplete
+            
             var venue = await _context.Venues.FindAsync(model.VenueId);
             ViewBag.VenueName = venue?.Name ?? string.Empty;
 

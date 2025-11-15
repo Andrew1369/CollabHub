@@ -13,7 +13,7 @@ namespace CollabHub.Models
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Для порядку в списку (drag-n-drop)
+        
         public int Order { get; set; }
     }
 }

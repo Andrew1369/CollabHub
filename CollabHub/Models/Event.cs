@@ -34,7 +34,7 @@ namespace CollabHub.Models
         public int? Capacity { get; set; }
 
 
-        // Поле-посилання (URL) для C1-вимоги "файл/лінк"
+        
         [Url]
         public string? ImageUrl { get; set; }
 

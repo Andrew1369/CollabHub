@@ -25,8 +25,6 @@ namespace CollabHub.Controllers
             {
                 // немає доступу до feature -> 403 або редірект на AccessDenied
                 return Forbid();
-                // або:
-                // return RedirectToAction("AccessDenied", "Account");
             }
 
             return View();

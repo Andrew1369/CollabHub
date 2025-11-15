@@ -53,7 +53,7 @@ namespace CollabHub.Tests
         [Fact]
         public void PremiumAction_ForFreePlan_ShouldReturnForbid()
         {
-            // Free -> PremiumTodo:false, Premium -> PremiumTodo:true (типова конфігурація)
+            // Free -> PremiumTodo:false, Premium -> PremiumTodo:true
             var features = CreateFeatureService(freePremiumTodo: false, premiumPremiumTodo: true);
             var user = CreateUser("Free");
             var controller = CreateController(features, user);

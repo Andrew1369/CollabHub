@@ -15,10 +15,10 @@
             <div class="form-group">
                 <label asp-for="VenueId" class="control-label">Локація</label>
 
-                <!-- Справжнє значення для моделі -->
+                
                 <input type="hidden" asp-for="VenueId" id="VenueId" />
 
-                <!-- Поле для пошуку/вибору локації -->
+                
                 <input type="text"
                        id="VenueName"
                        class="form-control"
@@ -69,12 +69,12 @@
 </div>
 
 @section Scripts {
-    <!-- jQuery (якщо у _Layout вже підключений, цей рядок можна не додавати) -->
+    
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
             integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
             crossorigin="anonymous"></script>
 
-    <!-- jQuery UI CSS + JS для autocomplete -->
+    
     <link rel="stylesheet"
           href="https://code.jquery.com/ui/1.13.3/themes/base/jquery-ui.css" />
     <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js"
@@ -90,14 +90,13 @@
             var $venueId = $("#VenueId");
 
             $venueName.autocomplete({
-                minLength: 3,        // F2: від 3 символів
+                minLength: 3,        // від 3 символів
                 delay: 300,          // невелика затримка
                 source: function (request, response) {
                     $.ajax({
                         url: "/api/v1/venues/autocomplete",
                         data: { term: request.term },
                         success: function (data) {
-                            // data: [{ id, label }]
                             response($.map(data, function (item) {
                                 return {
                                     label: item.label,

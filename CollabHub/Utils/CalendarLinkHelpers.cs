@@ -40,7 +40,7 @@ namespace CollabHub.Utils
             return url;
         }
 
-        // BONUS: генерація .ics-контенту (для Outlook/Apple і т.д.)
+        //генерація .ics-контенту (для Outlook/Apple і т.д.)
         public static string BuildIcsContent(Event ev)
         {
             var startUtc = ev.StartsAt.Kind == DateTimeKind.Utc

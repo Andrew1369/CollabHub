@@ -50,7 +50,7 @@ namespace CollabHub.Controllers
             return View();
         }
 
-        // POST: Assets/Create  (приймаємо файл)
+        // POST: Assets/Create 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("EventId")] Asset asset, IFormFile? file)
@@ -100,7 +100,7 @@ namespace CollabHub.Controllers
             return View(asset);
         }
 
-        // POST: Assets/Edit/5  (дозволимо заміну файлу)
+        // POST: Assets/Edit/5 
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,EventId")] Asset input, IFormFile? file)
@@ -116,7 +116,7 @@ namespace CollabHub.Controllers
             if (!ModelState.IsValid)
             {
                 ViewData["EventId"] = new SelectList(_context.Events, "Id", "Title", input.EventId);
-                // повертаємо поточний asset у в'юшку (а не input), щоб показати існуючий файл
+                
                 asset.EventId = input.EventId;
                 return View(asset);
             }
@@ -125,7 +125,7 @@ namespace CollabHub.Controllers
 
             if (file != null && file.Length > 0)
             {
-                // видалимо старий файл (опційно)
+                
                 if (!string.IsNullOrEmpty(asset.FilePath))
                 {
                     var old = asset.FilePath.TrimStart('/')

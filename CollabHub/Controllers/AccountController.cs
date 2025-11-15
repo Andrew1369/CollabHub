@@ -37,7 +37,7 @@ namespace CollabHub.Controllers
 
         public IActionResult AccessDenied()
         {
-            return View(); // можна зробити простий view з текстом "Доступ заборонено"
+            return View(); 
         }
 
         [Authorize]
