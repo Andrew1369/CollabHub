@@ -133,6 +133,7 @@ namespace CollabHub.Controllers
         }
 
         // POST: Organizations/Delete/5
+        //Test
         [HttpPost, ActionName("Delete")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
