@@ -121,6 +121,7 @@ namespace CollabHub.Controllers
         }
 
         // GET: Venues/Delete/5
+        // Test
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
